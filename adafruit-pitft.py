@@ -234,9 +234,9 @@ def sysupdate():
 
 def softwareinstall():
     print("Installing Pre-requisite Software...This may take a few minutes!")
-    if not shell.run_command("yay -Sy tslib", True):
+    if not shell.run_command("yay -Syy tslib", True):
         warn_exit("Yay failed to install TSLIB!")
-    if not shell.run_command("yay -Sy bc python-pip python-smbus python-spidev python-evdev evtest dtc raspi-config base-devel"):
+    if not shell.run_command("yay -Syy bc python-pip python-smbus python-spidev python-evdev evtest dtc raspi-config base-devel"):
         warn_exit("Yay failed to install software!")
     return True
 
@@ -361,7 +361,7 @@ def uninstall_console():
 def install_fbcp():
     global fbcp_rotations
     print("Installing cmake...")
-    if not shell.run_command("yay -S cmake", True):
+    if not shell.run_command("yay -Syy cmake", True):
         warn_exit("Yay failed to install software!")
     print("Downloading rpi-fbcp...")
     shell.pushd("/tmp")
@@ -640,10 +640,6 @@ restart the script and choose a different orientation.""".format(rotation=pitftr
 
     if not shell.isdir(target_homedir):
         shell.bail("{} must be an existing directory (use -u /home/foo to specify)".format(target_homedir))
-
-    shell.info("System update")
-    if not sysupdate():
-        shell.bail("Unable to update system")
 
     shell.info("Installing Python libraries & Software...")
     if not softwareinstall():
