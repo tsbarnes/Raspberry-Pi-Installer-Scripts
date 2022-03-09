@@ -221,12 +221,10 @@ def progress(ellipsis_count):
 def sysupdate():
     global UPDATE_DB
     if not UPDATE_DB:
-        print("Updating apt indexes...", end='')
+        print("Updating package databases and upgrading...", end='')
         progress(3)
-        if not shell.run_command('sudo apt update', True):
-            warn_exit("Apt failed to update indexes!")
-        if not shell.run_command('sudo apt-get update', True):
-            warn_exit("Apt failed to update indexes!")
+        if not shell.run_command('yay -Syu', True):
+            warn_exit("yay failed to update!")
         print("Reading package lists...")
         progress(3)
         UPDATE_DB = True
@@ -236,13 +234,10 @@ def sysupdate():
 
 def softwareinstall():
     print("Installing Pre-requisite Software...This may take a few minutes!")
-    if not shell.run_command("apt-get install -y libts0", True):
-        if not shell.run_command("apt-get install -y tslib"):
-            warn_exit("Apt failed to install TSLIB!")
-    if not shell.run_command("apt-get install -y bc fbi git python3-dev python3-pip python3-smbus python3-spidev evtest libts-bin device-tree-compiler libraspberrypi-dev build-essential"):
-        warn_exit("Apt failed to install software!")
-    if not shell.run_command("pip3 install evdev"):
-        warn_exit("Pip failed to install software!")
+    if not shell.run_command("yay -Sy tslib", True):
+        warn_exit("Yay failed to install TSLIB!")
+    if not shell.run_command("yay -Sy bc python-pip python-smbus python-spidev python-evdev evtest dtc raspi-config base-devel"):
+        warn_exit("Yay failed to install software!")
     return True
 
 def uninstall_bootconfigtxt():
@@ -269,22 +264,10 @@ def install_drivers():
         shell.run_command("dtc --warning no-unit_address_vs_reg -I dts -O dtb -o {dest} {src}".format(dest=pitft_config['overlay_dest'], src=pitft_config['overlay_src']))
 
     if pitft_config['kernel_upgrade']:
-        print("############# UPGRADING KERNEL ###############")
-        print("Updating packages...")
-        if not shell.run_command("sudo apt-get update", True):
-            warn_exit("Apt failed to update itself!")
-        print("Upgrading packages...")
-        if not shell.run_command("sudo apt-get -y upgrade", False):
-            warn_exit("Apt failed to install software!")
-        print("Installing Kernel Headers. This may take a few minutes...")
-        if not shell.run_command("apt-get install -y raspberrypi-kernel-headers", True):
-            warn_exit("Apt failed to install software!")
-        if not shell.isdir("/lib/modules/{}/build".format(shell.release())):
-            warn_exit("Kernel was updated, but needs to be loaded. Please reboot now and re-run script!")
         print("Compiling and installing display driver...")
         shell.pushd("st7789_module")
         if not shell.run_command("make"):
-            warn_exit("Apt failed to compile ST7789V drivers!")
+            warn_exit("Failed to compile ST7789V drivers!")
         shell.run_command("mv /lib/modules/{rel}/kernel/drivers/staging/fbtft/fb_st7789v.ko /lib/modules/{rel}/kernel/drivers/staging/fbtft/fb_st7789v.BACK".format(rel=shell.release()))
         shell.run_command("mv fb_st7789v.ko /lib/modules/{rel}/kernel/drivers/staging/fbtft/fb_st7789v.ko".format(rel=shell.release()))
         shell.popd()
@@ -378,8 +361,8 @@ def uninstall_console():
 def install_fbcp():
     global fbcp_rotations
     print("Installing cmake...")
-    if not shell.run_command("apt-get --yes --allow-downgrades --allow-remove-essential --allow-change-held-packages install cmake", True):
-        warn_exit("Apt failed to install software!")
+    if not shell.run_command("yay -S cmake", True):
+        warn_exit("Yay failed to install software!")
     print("Downloading rpi-fbcp...")
     shell.pushd("/tmp")
     shell.run_command("curl -sLO https://github.com/adafruit/rpi-fbcp/archive/master.zip")
@@ -578,6 +561,7 @@ def main(user, display, rotation, install_type, reboot):
 PiTFT Support using userspace touch
 controls and a DTO for display drawing.
 one of several configuration files.
+Requires yay and git.
 Run time of up to 5 minutes. Reboot required!
 """)
     if reboot is not None:
@@ -634,14 +618,6 @@ Run time of up to 5 minutes. Reboot required!
         shell.bail("""Unfortunately {rotation} degrees for the {display} is not working at this time. Please
 restart the script and choose a different orientation.""".format(rotation=pitftrot, display=pitft_config["menulabel"]))
 
-    if REMOVE_KERNEL_PINNING:
-        # Checking if kernel is pinned
-        if shell.exists('/etc/apt/preferences.d/99-adafruit-pin-kernel'):
-            shell.warn("WARNING! Script detected your system is currently pinned to an older kernel. The pin will be removed and your system will be updated.")
-            if not shell.prompt("Continue?"):
-                shell.exit()
-            shell.remove('/etc/apt/preferences.d/99-adafruit-pin-kernel')
-
     # check init system (technique borrowed from raspi-config):
     shell.info('Checking init system...')
     if shell.run_command("which systemctl", True) and shell.run_command("systemctl | grep '\-\.mount'", True):
@@ -667,7 +643,7 @@ restart the script and choose a different orientation.""".format(rotation=pitftr
 
     shell.info("System update")
     if not sysupdate():
-        shell.bail("Unable to apt-get update")
+        shell.bail("Unable to update system")
 
     shell.info("Installing Python libraries & Software...")
     if not softwareinstall():
@@ -708,10 +684,9 @@ restart the script and choose a different orientation.""".format(rotation=pitftr
             if not install_fbcp():
                 shell.bail("Unable to configure fbcp")
 
-            if shell.exists("/etc/lightdm"):
-                shell.info("Updating X11 default calibration...")
-                if not update_xorg():
-                    shell.bail("Unable to update calibration")
+            shell.info("Updating X11 default calibration...")
+            if not update_xorg():
+                shell.bail("Unable to update calibration")
         else:
             if not uninstall_fbcp():
                 shell.bail("Unable to uninstall fbcp")
