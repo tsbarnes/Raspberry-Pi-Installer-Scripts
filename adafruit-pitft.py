@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 Adafruit PiTFT Installer Script
 (C) Adafruit Industries, Creative Commons 3.0 - Attribution Share Alike
@@ -223,8 +224,8 @@ def sysupdate():
     if not UPDATE_DB:
         print("Updating package databases and upgrading...", end='')
         progress(3)
-        if not shell.run_command('yay -Syu', True):
-            warn_exit("yay failed to update!")
+        if not shell.run_command('pacman -Syu', True):
+            warn_exit("pacman failed to update!")
         print("Reading package lists...")
         progress(3)
         UPDATE_DB = True
@@ -234,10 +235,10 @@ def sysupdate():
 
 def softwareinstall():
     print("Installing Pre-requisite Software...This may take a few minutes!")
-    if not shell.run_command("yay -Syy tslib", True):
-        warn_exit("Yay failed to install TSLIB!")
-    if not shell.run_command("yay -Syy bc python-pip python-smbus python-spidev python-evdev evtest dtc raspi-config base-devel"):
-        warn_exit("Yay failed to install software!")
+    if not shell.run_command("pacman -Syy tslib", True):
+        warn_exit("pacman failed to install TSLIB!")
+    if not shell.run_command("pacman -Syy bc python-pip python-smbus python-spidev python-evdev evtest dtc raspi-config base-devel"):
+        warn_exit("pacman failed to install software!")
     return True
 
 def uninstall_bootconfigtxt():
